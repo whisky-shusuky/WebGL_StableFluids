@@ -10,8 +10,12 @@
     return shader;
   }
 
+  // コンテキスト
   function createProgramFromSource(gl, vertexShaderSource, fragmentShaderSource) {
+    // WebGLのオブジェクト生成
+    // https://developer.mozilla.org/ja/docs/Web/API/WebGLRenderingContext/createProgram
     const program = gl.createProgram();
+    // 生成した頂点とフラグメントシェーダーソースをそれぞれリンク
     gl.attachShader(program, createShader(gl, vertexShaderSource, gl.VERTEX_SHADER));
     gl.attachShader(program, createShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER));
     gl.linkProgram(program);
@@ -60,7 +64,8 @@
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(location, index);
   }  
-
+// vertex(頂点)シェーダーのテンプレ
+// 組み込みのgl_VertexID のインデックスが6つあり、それぞれに対して4隅の座標を与えている模様
   const FILL_VIEWPORT_VERTEX_SHADER_SOURCE =
 `#version 300 es
 
@@ -490,8 +495,10 @@ void main(void) {
   let mousePosition = new Vector2(0.0, 0.0);
   let mouseDir = new Vector2(0.0, 0.0);
   let mouseMoved = false;
+  // mouseが動いたら発火
   window.addEventListener('mousemove', event => {
     prevMousePosition = mousePosition;
+    // x,y 座標を二次元行列に保存
     mousePosition = new Vector2(event.clientX, window.innerHeight - event.clientY);
     if (!Vector2.equals(prevMousePosition, mousePosition)) {
       mouseDir = Vector2.sub(mousePosition, prevMousePosition).norm();
@@ -499,6 +506,8 @@ void main(void) {
     }
   });
 
+  // mousedown を使ってmousePressing = trueにする。
+  // true にしてmouseが動くと updateVelocity が走る
   let mousePressing = false;
   window.addEventListener('mousedown', _ => {
     mousePressing = true;
@@ -540,6 +549,7 @@ void main(void) {
   const addDensitySourceProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, ADD_DENSITY_SOURCE_FRAGMENT_SHADER_SOURCE);
   const diffuseDensityProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, DIFFUSE_DENSITY_FRAGMENT_SAHDER_SOURCE);
   const advectDensityProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, ADVECT_DENSITY_FRAGMENT_SHADER_SOURCE);
+  // 外力の追加はこれ
   const addExternalForceProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, ADD_EXTERNAL_FORCE_FRAGMENT_SHADER_SOURCE);
   const diffuseVelocityProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, DIFFUSE_VELOCITY_FRAGMENT_SHADER_SOURCE);
   const advectVelocityProgram = createProgramFromSource(gl, FILL_VIEWPORT_VERTEX_SHADER_SOURCE, ADVECT_VELOCITY_FRAGMENT_SHADER_SOURCE);
@@ -565,7 +575,7 @@ void main(void) {
   const renderDensityUniforms = getUniformLocations(gl, renderDensityProgram, ['u_densityTexture']);
   const renderVelocityUniforms = getUniformLocations(gl, renderVelocityProgram, ['u_velocityTexture']);
 
-  const imageTexture = createImageTexture(gl, './resource/lenna.png');
+  const imageTexture = createImageTexture(gl, './resource/mokuri.jpg');
 
   let requestId = null;
   const reset = function() {
@@ -637,7 +647,11 @@ void main(void) {
       swapDensityFbObj();
     }
 
+    // 外力(?)追加
     const addExternalForce = function(deltaTime) {
+      // フレームバッファと紐付ける
+      // バッファを統括するバッファであり、プログラムとスクリーンとの間を取り持つ仲介役のような役割
+      // https://wgld.org/d/webgl/w040.html
       gl.bindFramebuffer(gl.FRAMEBUFFER, velocityFbObjW.framebuffer);
       gl.useProgram(addExternalForceProgram);
       setUniformTexture(gl, 0, velocityFbObjR.velocityTexture, addExternalForceUniforms['u_velocityTexture']);
@@ -715,10 +729,12 @@ void main(void) {
       proceedProjectStep3();
     };
 
+    // マウスを押してmouseを動かしたら発火
     const updateVelocity = function(deltaTime) {
       if (mousePressing && mouseMoved) {
         addExternalForce(deltaTime);
       }
+      // ぼやけさせる係数の処理
       if (parameters['diffuse coef'] > 0.0) {
         diffuseVelocity(deltaTime);
       }
